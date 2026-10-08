@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>근무표 관리</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23e57d98' d='M12 20.5C9.5 18.6 2 13.6 2 8.6 2 5.6 4.4 3.5 7 3.5c2.1 0 3.9 1.2 5 3 1.1-1.8 2.9-3 5-3 2.6 0 5 2.1 5 5.1 0 5-7.5 10-10 11.9z'/%3E%3C/svg%3E">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="top">
+  <div class="top-in">
+    <div class="brand" id="brand">근무표</div>
+    <button class="btn sm" id="btnLeader" onclick="toggleLeader()"></button>
+  </div>
+  <div class="tabs">
+    <button class="tab active" data-tab="all" onclick="showTab('all')">전체 일정</button>
+    <button class="tab" data-tab="mine" onclick="showTab('mine')">내 일정</button>
+    <button class="tab" data-tab="members" onclick="showTab('members')" id="tabMembers" style="display:none">팀원 관리</button>
+    <button class="tab" data-tab="settings" onclick="showTab('settings')" id="tabSettings" style="display:none">설정</button>
+  </div>
+</div>
+
+<main>
+  <div id="loading" class="loading">불러오는 중…</div>
+
+  <!-- 전체 일정 -->
+  <section id="tab-all" style="display:none">
+    <div class="card deskcal">
+      <div class="notice-bar" id="noticeBar"><span class="notice-lbl num">NOTICE</span><span class="notice-txt" id="notice"></span></div>
+      <div class="deskcal-body">
+        <div class="side">
+          <div class="year num" id="calYear"></div>
+          <div class="big num" id="calMonthNum"></div>
+          <div class="mon num" id="calMonthEn"></div>
+          <div class="kr" id="calMonthKr"></div>
+          <div class="nav">
+            <button class="btn icon sm" onclick="moveMonth(-1)" title="이전 달" data-ico="left"></button>
+            <button class="btn icon sm" onclick="moveMonth(1)" title="다음 달" data-ico="right"></button>
+            <button class="btn sm" onclick="goToday()">오늘</button>
+          </div>
+        </div>
+        <div class="grid">
+          <div class="row" id="leaderTools" style="display:none;margin-bottom:8px">
+            <span class="hint">팀장 모드: 토요일 칸이나 조출 막대를 눌러 편집하세요.</span>
+            <span class="spacer"></span>
+            <button class="btn sm" onclick="autoFill('sat')">빈 토요일 자동 배정</button>
+            <button class="btn sm" onclick="autoFill('early')">빈 조출 주 자동 배정</button>
+          </div>
+          <div class="cal" id="cal"></div>
+        </div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="mtabs" id="mtabs"></div>
+    </div>
+    <div class="two">
+      <div class="card"><h3 data-ico="cal">토요일 근무 <span class="muted" id="satMonthLabel"></span><em>SATURDAY DUTY</em></h3><div id="satList"></div></div>
+      <div class="card"><h3 data-ico="heart">주중 조출 <span class="muted" id="earlyMonthLabel"></span><em>EARLY SHIFT</em></h3><div id="earlyList"></div></div>
+    </div>
+  </section>
+
+  <!-- 내 일정 -->
+  <section id="tab-mine" style="display:none">
+    <div class="card">
+      <div class="row">
+        <span data-ico="user" class="lbl">내 이름</span>
+        <select id="meSelect" style="width:auto;min-width:120px" onchange="setMe(this.value)"></select>
+        <span class="hint">한 번 고르면 이 기기에서 기억합니다.</span>
+      </div>
+    </div>
+    <div id="mineBody"></div>
+  </section>
+
+  <!-- 팀원 관리 (팀장 모드 전용) -->
+  <section id="tab-members" style="display:none">
+    <div class="card">
+      <h3 data-ico="users">팀원 목록 <span class="hint" id="memberHint"></span><em>TEAM MEMBERS</em></h3>
+      <div id="memberList"></div>
+      <div class="row" style="margin-top:10px" id="memberAddRow">
+        <input type="text" id="newName" placeholder="이름 (예: 민수주임)" style="width:180px">
+        <button class="btn sm" onclick="addMember()" data-ico="plus">추가</button>
+        <span class="spacer"></span>
+        <button class="btn primary sm" onclick="saveMembers()">저장</button>
+      </div>
+      <p class="hint" style="margin:8px 0 0">순서는 자동 배정 순번에 사용됩니다. 비활성 팀원은 자동 배정에서 제외되고 선택 목록에서도 숨겨집니다.</p>
+    </div>
+  </section>
+
+  <!-- 설정 (팀장 모드 전용) -->
+  <section id="tab-settings" style="display:none">
+    <div class="card">
+      <h3 data-ico="gear">팀 설정<em>SETTINGS</em></h3>
+      <label>팀명</label><input type="text" id="setTeam">
+      <label>상단 안내 문구</label><input type="text" id="setNotice">
+      <div class="row" style="margin-top:10px"><span class="spacer"></span><button class="btn primary sm" onclick="saveSettings()">저장</button></div>
+    </div>
+    <div class="card">
+      <h3 data-ico="key">팀장 비밀번호 변경<em>PASSWORD</em></h3>
+      <label>현재 비밀번호</label><input type="password" id="pwOld">
+      <label>새 비밀번호</label><input type="password" id="pwNew">
+      <label>새 비밀번호 확인</label><input type="password" id="pwNew2">
+      <div class="row" style="margin-top:10px"><span class="spacer"></span><button class="btn primary sm" onclick="changePassword()">변경</button></div>
+    </div>
+    <div class="card">
+      <div class="row"><span class="muted" data-ico="clock">팀장 모드는 8시간 후 자동 해제됩니다.</span><span class="spacer"></span><button class="btn sm" onclick="logout()">팀장 모드 해제</button></div>
+    </div>
+  </section>
+</main>
+
+<div id="modalHost"></div>
+<div class="toast" id="toast"></div>
+
+<script src="vendor/supabase.js"></script>
+<script src="config.js"></script>
+<script src="js/api.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
